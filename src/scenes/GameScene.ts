@@ -13,6 +13,12 @@ export class GameScene extends Phaser.Scene {
   private woodCollected: number = 0;
   private resourceText!: Phaser.GameObjects.Text;
   private interactText!: Phaser.GameObjects.Text;
+  private harvestProgress: number = 0;
+  private harvestDuration: number = 3000; // 3 seconds in milliseconds
+  private currentTarget: Phaser.Physics.Arcade.Sprite | null = null;
+  private isHarvesting: boolean = false;
+  private progressBar!: Phaser.GameObjects.Graphics;
+  private progressBarBg!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -70,6 +76,17 @@ export class GameScene extends Phaser.Scene {
     this.interactText.setOrigin(0.5);
     this.interactText.setScrollFactor(0);
     this.interactText.setDepth(100);
+
+    // Create progress bar
+    this.progressBarBg = this.add.graphics();
+    this.progressBarBg.setScrollFactor(0);
+    this.progressBarBg.setDepth(101);
+    this.progressBarBg.setVisible(false);
+
+    this.progressBar = this.add.graphics();
+    this.progressBar.setScrollFactor(0);
+    this.progressBar.setDepth(102);
+    this.progressBar.setVisible(false);
   }
 
   update(): void {
@@ -118,7 +135,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private checkNearbyResources(): void {
-    let nearResource = false;
+    let nearResource: Phaser.Physics.Arcade.Sprite | null = null;
+    let resourceType: string = '';
     const interactDistance = 50;
 
     // Check berry bushes
@@ -132,12 +150,8 @@ export class GameScene extends Phaser.Scene {
       if (distance < interactDistance) {
         const state = bush.getData('state') as number;
         if (state > 0) {
-          nearResource = true;
-          this.interactText.setText('Press E to collect berries');
-          
-          if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
-            this.collectBerries(bush);
-          }
+          nearResource = bush;
+          resourceType = 'berry';
           break;
         }
       }
@@ -155,21 +169,88 @@ export class GameScene extends Phaser.Scene {
         if (distance < interactDistance) {
           const state = tree.getData('state') as number;
           if (state > 0) {
-            nearResource = true;
-            this.interactText.setText('Press E to chop wood');
-            
-            if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
-              this.chopTree(tree);
-            }
+            nearResource = tree;
+            resourceType = 'tree';
             break;
           }
         }
       }
     }
 
-    if (!nearResource) {
+    // Handle harvesting
+    if (nearResource) {
+      const isHoldingE = this.interactKey.isDown;
+
+      if (isHoldingE) {
+        // Start or continue harvesting
+        if (!this.isHarvesting || this.currentTarget !== nearResource) {
+          this.isHarvesting = true;
+          this.currentTarget = nearResource;
+          this.harvestProgress = 0;
+        }
+
+        // Update progress
+        this.harvestProgress += this.game.loop.delta;
+        const progress = Math.min(this.harvestProgress / this.harvestDuration, 1);
+
+        // Update UI
+        if (resourceType === 'berry') {
+          this.interactText.setText('Hold E to collect berries...');
+        } else {
+          this.interactText.setText('Hold E to chop wood...');
+        }
+
+        this.updateProgressBar(progress);
+
+        // Complete harvest
+        if (progress >= 1) {
+          if (resourceType === 'berry') {
+            this.collectBerries(nearResource);
+          } else {
+            this.chopTree(nearResource);
+          }
+          this.resetHarvest();
+        }
+      } else {
+        // Show prompt but not harvesting
+        if (resourceType === 'berry') {
+          this.interactText.setText('Hold E to collect berries');
+        } else {
+          this.interactText.setText('Hold E to chop wood');
+        }
+        this.resetHarvest();
+      }
+    } else {
       this.interactText.setText('');
+      this.resetHarvest();
     }
+  }
+
+  private updateProgressBar(progress: number): void {
+    const barWidth = 200;
+    const barHeight = 20;
+    const x = 400 - barWidth / 2;
+    const y = 520;
+
+    // Background
+    this.progressBarBg.clear();
+    this.progressBarBg.fillStyle(0x000000, 0.7);
+    this.progressBarBg.fillRect(x - 2, y - 2, barWidth + 4, barHeight + 4);
+    this.progressBarBg.setVisible(true);
+
+    // Progress
+    this.progressBar.clear();
+    this.progressBar.fillStyle(DarkFantasyPalette.mysticTeal);
+    this.progressBar.fillRect(x, y, barWidth * progress, barHeight);
+    this.progressBar.setVisible(true);
+  }
+
+  private resetHarvest(): void {
+    this.isHarvesting = false;
+    this.currentTarget = null;
+    this.harvestProgress = 0;
+    this.progressBarBg.setVisible(false);
+    this.progressBar.setVisible(false);
   }
 
   private collectBerries(bush: Phaser.Physics.Arcade.Sprite): void {
