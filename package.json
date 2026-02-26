@@ -1,6 +1,6 @@
 {
-  "name": "der-geselle",
-  "version": "1.0.0",
+  "name": "AlIve",
+  "version": "0.0.1",
   "description": "A top-down adventure game in Phaser.js",
   "main": "index.js",
   "scripts": {
