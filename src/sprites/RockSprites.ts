@@ -3,15 +3,17 @@ import { DarkFantasyPalette } from '../colors';
 
 export class RockSprites {
   static create(scene: Phaser.Scene): void {
-    // Create 3 variations of rocks
+    // Create 3 variations of rocks with 4 states each (3 = full, 0 = depleted)
     for (let variation = 0; variation < 3; variation++) {
-      const seed = variation * 1000;
-      const rockGraphics = scene.add.graphics({ x: 0, y: 0 });
-      
-      this.drawDetailedRock(rockGraphics, 24, 24, seed);
-      
-      rockGraphics.generateTexture(`rock-v${variation}`, 48, 48);
-      rockGraphics.destroy();
+      for (let state = 0; state <= 3; state++) {
+        const seed = variation * 1000 + state * 100;
+        const rockGraphics = scene.add.graphics({ x: 0, y: 0 });
+        
+        this.drawDetailedRock(rockGraphics, 24, 24, seed, state);
+        
+        rockGraphics.generateTexture(`rock-${state}-v${variation}`, 48, 48);
+        rockGraphics.destroy();
+      }
     }
   }
 
@@ -20,17 +22,21 @@ export class RockSprites {
     return x - Math.floor(x);
   }
 
-  private static drawDetailedRock(graphics: Phaser.GameObjects.Graphics, centerX: number, centerY: number, seed: number): void {
+  private static drawDetailedRock(graphics: Phaser.GameObjects.Graphics, centerX: number, centerY: number, seed: number, state: number = 3): void {
     const rockSize = 16 + this.random(seed++) * 6;
     
+    // Reduce size and detail based on state (rocks get smaller as they're mined)
+    const stateMultiplier = state / 3; // 1.0 for state 3, 0.33 for state 1, 0 for state 0
+    const adjustedRockSize = rockSize * (0.5 + stateMultiplier * 0.5); // Rocks shrink when mined
+    
     // Draw multiple angular rock chunks
-    const numChunks = 8 + Math.floor(this.random(seed++) * 6);
+    const numChunks = Math.floor((8 + Math.floor(this.random(seed++) * 6)) * (0.4 + stateMultiplier * 0.6));
     
     for (let i = 0; i < numChunks; i++) {
       const chunkSeed = seed + i * 100;
-      const offsetX = (this.random(chunkSeed) - 0.5) * rockSize * 1.5;
-      const offsetY = (this.random(chunkSeed + 1) - 0.5) * rockSize * 1.5;
-      const chunkSize = 4 + this.random(chunkSeed + 2) * 10;
+      const offsetX = (this.random(chunkSeed) - 0.5) * adjustedRockSize * 1.5;
+      const offsetY = (this.random(chunkSeed + 1) - 0.5) * adjustedRockSize * 1.5;
+      const chunkSize = (4 + this.random(chunkSeed + 2) * 10) * (0.5 + stateMultiplier * 0.5);
       
       // Base stone color with variation
       const colorVariation = Math.floor(this.random(chunkSeed + 3) * 3);
@@ -42,12 +48,12 @@ export class RockSprites {
       this.drawAngularShape(graphics, centerX + offsetX, centerY + offsetY, chunkSize, 6 + Math.floor(this.random(chunkSeed + 4) * 3), chunkSeed + 5);
     }
     
-    // Add dark cracks and crevices
-    const numCracks = 15 + Math.floor(this.random(seed + 500) * 20);
+    // Add dark cracks and crevices (more cracks when damaged)
+    const numCracks = Math.floor((15 + Math.floor(this.random(seed + 500) * 20)) * (0.5 + stateMultiplier * 0.5));
     for (let i = 0; i < numCracks; i++) {
       const crackSeed = seed + 500 + i * 10;
-      const offsetX = (this.random(crackSeed) - 0.5) * rockSize * 1.8;
-      const offsetY = (this.random(crackSeed + 1) - 0.5) * rockSize * 1.8;
+      const offsetX = (this.random(crackSeed) - 0.5) * adjustedRockSize * 1.8;
+      const offsetY = (this.random(crackSeed + 1) - 0.5) * adjustedRockSize * 1.8;
       const crackSize = 1 + this.random(crackSeed + 2) * 4;
       
       graphics.fillStyle(DarkFantasyPalette.shadowGreen, 0.6 + this.random(crackSeed + 3) * 0.4);
@@ -55,11 +61,11 @@ export class RockSprites {
     }
     
     // Add moss patches
-    const numMoss = 10 + Math.floor(this.random(seed + 1000) * 15);
+    const numMoss = Math.floor((10 + Math.floor(this.random(seed + 1000) * 15)) * (0.5 + stateMultiplier * 0.5));
     for (let i = 0; i < numMoss; i++) {
       const mossSeed = seed + 1000 + i * 10;
-      const offsetX = (this.random(mossSeed) - 0.5) * rockSize * 1.5;
-      const offsetY = (this.random(mossSeed + 1) - 0.5) * rockSize * 1.5;
+      const offsetX = (this.random(mossSeed) - 0.5) * adjustedRockSize * 1.5;
+      const offsetY = (this.random(mossSeed + 1) - 0.5) * adjustedRockSize * 1.5;
       const mossSize = 2 + this.random(mossSeed + 2) * 5;
       
       graphics.fillStyle(DarkFantasyPalette.mossyStone, 0.5 + this.random(mossSeed + 3) * 0.3);
@@ -67,11 +73,11 @@ export class RockSprites {
     }
     
     // Add highlights
-    const numHighlights = 8 + Math.floor(this.random(seed + 1500) * 12);
+    const numHighlights = Math.floor((8 + Math.floor(this.random(seed + 1500) * 12)) * (0.5 + stateMultiplier * 0.5));
     for (let i = 0; i < numHighlights; i++) {
       const highlightSeed = seed + 1500 + i * 10;
-      const offsetX = (this.random(highlightSeed) - 0.5) * rockSize * 1.3;
-      const offsetY = (this.random(highlightSeed + 1) - 0.5) * rockSize * 1.3;
+      const offsetX = (this.random(highlightSeed) - 0.5) * adjustedRockSize * 1.3;
+      const offsetY = (this.random(highlightSeed + 1) - 0.5) * adjustedRockSize * 1.3;
       const highlightSize = 1 + this.random(highlightSeed + 2) * 3;
       
       graphics.fillStyle(DarkFantasyPalette.moonlight, 0.2 + this.random(highlightSeed + 3) * 0.3);
@@ -79,11 +85,11 @@ export class RockSprites {
     }
     
     // Add small stone details and fragments
-    const numDetails = 20 + Math.floor(this.random(seed + 2000) * 30);
+    const numDetails = Math.floor((20 + Math.floor(this.random(seed + 2000) * 30)) * (0.5 + stateMultiplier * 0.5));
     for (let i = 0; i < numDetails; i++) {
       const detailSeed = seed + 2000 + i * 10;
-      const offsetX = (this.random(detailSeed) - 0.5) * rockSize * 2;
-      const offsetY = (this.random(detailSeed + 1) - 0.5) * rockSize * 2;
+      const offsetX = (this.random(detailSeed) - 0.5) * adjustedRockSize * 2;
+      const offsetY = (this.random(detailSeed + 1) - 0.5) * adjustedRockSize * 2;
       const detailSize = 0.5 + this.random(detailSeed + 2) * 2;
       
       const detailType = Math.floor(this.random(detailSeed + 3) * 3);
