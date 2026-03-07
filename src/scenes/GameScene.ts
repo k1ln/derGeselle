@@ -6,9 +6,11 @@ import { RockSprites } from '../sprites/RockSprites';
 import { HouseSprites } from '../sprites/HouseSprites';
 import { BerryBushSprites } from '../sprites/BerryBushSprites';
 import { MouseSprites } from '../sprites/MouseSprites';
+import { MouseNPC } from '../objects/MouseNPC';
 import { Inventory } from '../inventory/Inventory';
 import { InventoryUI } from '../inventory/InventoryUI';
 import { ITEM_TYPES } from '../inventory/InventoryItem';
+import { OllamaService } from '../ai/OllamaService';
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -21,7 +23,8 @@ export class GameScene extends Phaser.Scene {
   private trees: Phaser.Physics.Arcade.Sprite[] = [];
   private rocks: Phaser.Physics.Arcade.Sprite[] = [];
   private droppedItems: Phaser.Physics.Arcade.Sprite[] = [];
-  private sweetMouse: Phaser.Physics.Arcade.Sprite | null = null;
+  private mouse: MouseNPC | null = null;
+  private aiService!: OllamaService;
   private inventory!: Inventory;
   private inventoryUI!: InventoryUI;
   private interactText!: Phaser.GameObjects.Text;
@@ -112,11 +115,21 @@ export class GameScene extends Phaser.Scene {
     this.progressBar.setDepth(102);
     this.progressBar.setVisible(false);
 
+    // Initialize AI service for mouse behavior
+    this.aiService = new OllamaService();
+    this.aiService.initialize().then(success => {
+      if (success) {
+        console.log('🧠 Mouse AI ready - Phi-4 will control behavior');
+      } else {
+        console.log('⚠️  Mouse AI unavailable - using simple behavior');
+      }
+    });
+
     // Spawn a sweet little mouse next to the player
-    this.spawnSweetMouse();
+    this.spawnMouse();
   }
 
-  update(): void {
+  update(_time: number, delta: number): void {
     // Handle inventory toggle
     if (Phaser.Input.Keyboard.JustDown(this.inventoryKey)) {
       this.inventoryUI.toggle();
@@ -167,6 +180,11 @@ export class GameScene extends Phaser.Scene {
     
     // Check for nearby dropped items
     this.checkNearbyDroppedItems();
+
+    // Update mouse AI behavior
+    if (this.mouse) {
+      this.mouse.update(delta, { x: this.player.x, y: this.player.y });
+    }
   }
 
   private checkNearbyResources(): void {
@@ -630,9 +648,8 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private spawnSweetMouse(): void {
+  private spawnMouse(): void {
     console.log('Spawning realistic mouse...');
-    console.log('Player position:', this.player.x, this.player.y);
     
     // Spawn a small realistic mouse next to the player
     const offsetDistance = 30; // Close to player
@@ -640,29 +657,9 @@ export class GameScene extends Phaser.Scene {
     const mouseX = this.player.x + Math.cos(angle) * offsetDistance;
     const mouseY = this.player.y + Math.sin(angle) * offsetDistance;
 
-    console.log('Mouse spawn position:', mouseX, mouseY);
-
-    // Create the mouse sprite - small and realistic
-    this.sweetMouse = this.physics.add.sprite(mouseX, mouseY, 'mouse');
-    this.sweetMouse.setScale(1); // Small, realistic size compared to player
-    this.sweetMouse.setDepth(8);
+    // Create the mouse NPC
+    this.mouse = new MouseNPC(this, mouseX, mouseY, this.aiService);
     
-    console.log('Mouse created:', this.sweetMouse);
-    console.log('Mouse texture:', this.sweetMouse.texture.key);
-    
-    // Show idle frame (no animation since no motivation to move)
-    this.sweetMouse.setFrame(0);
-
-    // Set mouse attributes - low motivation
-    this.sweetMouse.setData('health', 100);
-    this.sweetMouse.setData('hunger', 50);
-    this.sweetMouse.setData('social', 20); // Low social need
-    this.sweetMouse.setData('sleep', 70);
-    this.sweetMouse.setData('temperature', 75);
-
-    // Mouse doesn't move - no motivation
-    this.sweetMouse.setVelocity(0, 0);
-    
-    console.log('Mouse spawned - stationary');
+    console.log('Mouse NPC spawned at position:', mouseX, mouseY);
   }
 }
